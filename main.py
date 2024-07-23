@@ -4,6 +4,7 @@ import shutil
 import ttkbootstrap as tb
 import ttkbootstrap.dialogs as dialogs
 
+
 class App(tb.Frame):
     def __init__(self, master):
         tb.Frame.__init__(self, master)
@@ -12,29 +13,21 @@ class App(tb.Frame):
         ysb = tb.Scrollbar(self, orient='vertical', command=self.tree.yview)
         xsb = tb.Scrollbar(self, orient='horizontal', command=self.tree.xview)
         
-        self.tree.configure(yscroll=ysb.set, xscroll=xsb.set)
+        self.tree.configure(yscrollcommand=ysb, xscrollcommand=xsb)
         self.tree.tag_configure("Active", foreground='#007700')
-        self.tree.tag_configure("Deactive", foreground="#770000")
+        self.tree.tag_configure("Inactive", foreground="#770000")
         self.tree.heading('#0', text="Mods")
         self.tree.bind("<ButtonRelease>", self.activate_buttons)
 
-        
-        self.conrols = Controls(self)
+        self.controls = tb.Frame(self)
+        self.activate_button = tb.Button(self.controls, text="activate", style='success', command=self.activate)
+        self.deactivate_button = tb.Button(self.controls, text="deactivate", style='danger', command=self.deactivate)
 
+        self.activate_button.grid(row=0, column=0, padx=5)
+        self.deactivate_button.grid(row=0, column=1, padx=5)
 
-        self.reload()
+        self.data = self.load_data()
 
-
-        self.tree.grid(row=0, column=0, sticky='nw', ipadx=100)
-        ysb.grid(row=0, column=1, sticky='ns')
-        xsb.grid(row=1, column=0, sticky='ew')
-        self.conrols.grid(row=2, column=0, columnspan=2, pady=10)
-        self.pack(expand=True)
-
-    def setup_path(self):
-        with open('save.json', 'r') as file:
-            self.data = json.load(file)
-        
         self.modPath = self.data['modsFilePath']
         self.active = self.data['active']
 
@@ -43,6 +36,23 @@ class App(tb.Frame):
             self.data['modsFilePath'] = self.modPath
 
             self.save_data()
+
+        self.reload()
+
+        self.tree.grid(row=0, column=0, sticky='nw', ipadx=100)
+        ysb.grid(row=0, column=1, sticky='ns')
+        xsb.grid(row=1, column=0, sticky='ew')
+        self.controls.grid(row=2, column=0, columnspan=2, pady=10)
+        self.activate_button.grid(row=0, column=0)
+        self.deactivate_button.grid(row=0, column=1)
+        self.pack(expand=True)
+
+    def load_data(self) -> dict:
+        with open('save.json', 'r') as file:
+            data = json.load(file)
+        return data
+
+    def setup_path(self):
 
         abspath = os.path.abspath('mods/')
         root_node = self.tree.insert('', 'end', text=os.path.basename(abspath), open=True)
@@ -53,7 +63,7 @@ class App(tb.Frame):
             abspath = os.path.join(path, p)
             isdir = os.path.isdir(abspath)
             if ".DS_Store" not in p:
-                oid = self.tree.insert(parent, 'end', text=p, iid=abspath, tags='Deactive')
+                oid = self.tree.insert(parent, 'end', text=p, iid=abspath, tags='Inactive')
                 
                 if oid in self.data['active']:
                     self.tree.item(oid, tags="Active")
@@ -63,7 +73,7 @@ class App(tb.Frame):
                     self.tree.item(oid, tags="")
     
     def reload(self):
-        self.conrols.inputs('disabled')
+        self.inputs('disabled')
         for child in self.tree.get_children():
             self.tree.delete(child)
         
@@ -76,10 +86,10 @@ class App(tb.Frame):
     def activate_buttons(self, event):
         selected: str = self.tree.selection()[0]
         if ".jar" in selected:
-            self.conrols.inputs('normal')
+            self.inputs('normal')
         
         else:
-            self.conrols.inputs('disabled')
+            self.inputs('disabled')
     
     def activate(self):
         selected = self.tree.selection()[0]
@@ -92,7 +102,7 @@ class App(tb.Frame):
             
             self.tree.item(selected, tags='Active')
         self.tree.selection_remove(selected)
-        self.conrols.inputs('disabled')
+        self.inputs('disabled')
 
     def deactivate(self):
         
@@ -104,23 +114,14 @@ class App(tb.Frame):
 
             self.save_data()
 
-            self.tree.item(selected, tags='Deactive')
+            self.tree.item(selected, tags='Inactive')
         self.tree.selection_remove(selected)
-        self.conrols.inputs('disabled')
+        self.inputs('disabled')
 
-class Controls(tb.Frame):
-    def __init__(self, master):
-        tb.Frame.__init__(self, master)
-
-        self.activate_button = tb.Button(self, text="activate", style='success', command=master.activate)
-        self.deactivate_button = tb.Button(self, text="deactivate", style='danger', command=master.deactivate)
-
-        self.activate_button.grid(row=0, column=0, padx=5)
-        self.deactivate_button.grid(row=0, column=1, padx=5)
-    
     def inputs(self, state):
         self.activate_button['state'] = state
         self.deactivate_button['state'] = state
+
 
 root = tb.Window(themename='journal')
 app = App(root)
